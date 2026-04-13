@@ -1,9 +1,5 @@
 # sonner-js
 
-> :warning: **WARNING: This library is still a work in progress!** :warning:
->
-> Please be aware that while this library is being actively developed and improved, there may be instability and breaking changes. Use at your own risk in production environments.
-
 sonner-js is a dependency-free, vanilla JavaScript version of the [Sonner](https://sonner.emilkowal.ski/) toast component originally built for React. This version maintains almost the same functionality but is built to be used in any JavaScript project without the need for React.
 
 ## Usage
@@ -15,9 +11,10 @@ To start using the library, include it in your project:
 <link rel="stylesheet" href="path/to/sonner.css" />
 ```
 
-Then, you can start using the `Sonner.show` method to display toasts:
+Then, initialize and start showing toasts:
 
 ```javascript
+Sonner.init();
 Sonner.show("My first toast");
 ```
 
@@ -70,38 +67,72 @@ Initializes the toasters in the DOM.
   - `closeButton` (boolean): Controls the visibility of the close button on the toasts.
   - `richColors` (boolean): Controls the use of rich colors for the toasts.
   - `position` (string): Controls the position of the toasts. Possible values are `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, and `bottom-right`.
+  - `theme` (string): The color theme for the toasts. Possible values are `"light"`, `"dark"`, and `"system"` (default: `"system"`). When set to `"system"`, the theme is detected from the user's `prefers-color-scheme` media query and automatically updates when the system preference changes.
+  - `duration` (number): Global default toast duration in milliseconds. Overrides the built-in default of 4000ms. Individual toasts can still override this with a per-toast `duration`.
 
-### `success(msg)`
+**Example:**
+
+```javascript
+Sonner.init({
+  closeButton: true,
+  richColors: true,
+  position: "bottom-right",
+  theme: "dark",
+  duration: 5000,
+});
+```
+
+### `success(msg, descriptionOrOptions)`
 
 Shows a new success toast with a specific message.
 
 **Parameters:**
 
 - `msg` (string): The message to display in the toast.
+- `descriptionOrOptions` (string | Object): A description string, or an options object with `description`, `duration`, etc.
 
-### `error(msg)`
+**Returns:** `string` — the toast id.
+
+**Examples:**
+
+```javascript
+Sonner.success("Saved!");
+Sonner.success("Saved!", "Your changes have been saved.");
+Sonner.success("Saved!", { description: "Your changes have been saved.", duration: 8000 });
+```
+
+### `error(msg, descriptionOrOptions)`
 
 Shows a new error toast with a specific message.
 
 **Parameters:**
 
 - `msg` (string): The message to display in the toast.
+- `descriptionOrOptions` (string | Object): A description string, or an options object.
 
-### `info(msg)`
+**Returns:** `string` — the toast id.
+
+### `info(msg, descriptionOrOptions)`
 
 Shows a new info toast with a specific message.
 
 **Parameters:**
 
 - `msg` (string): The message to display in the toast.
+- `descriptionOrOptions` (string | Object): A description string, or an options object.
 
-### `warning(msg)`
+**Returns:** `string` — the toast id.
+
+### `warning(msg, descriptionOrOptions)`
 
 Shows a new warning toast with a specific message.
 
 **Parameters:**
 
 - `msg` (string): The message to display in the toast.
+- `descriptionOrOptions` (string | Object): A description string, or an options object.
+
+**Returns:** `string` — the toast id.
 
 ### `show(msg, options)`
 
@@ -113,6 +144,17 @@ Shows a new toast with a specific message, description, and type.
 - `options` (Object)
   - `type` (string): The type of the toast.
   - `description` (string): The description to display in the toast.
+  - `duration` (number): Per-toast duration in milliseconds. Overrides the global `duration` set in `init()`.
+
+**Returns:** `string` — the toast id.
+
+**Example:**
+
+```javascript
+const id = Sonner.show("Processing…", { type: "info", duration: 10000 });
+// Later, remove it programmatically:
+Sonner.remove(id);
+```
 
 ### `remove(id)`
 

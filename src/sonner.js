@@ -14,6 +14,12 @@ const SWIPE_THRESHOLD = 20;
 const TIME_BEFORE_UNMOUNT = 200;
 
 ////////////////////////
+// Global config
+////////////////////////
+let _globalDuration = null;
+let _resolvedTheme = "light";
+
+////////////////////////
 // Sonner
 // The Sonner object is a singleton that provides methods to show different types of toasts.
 ////////////////////////
@@ -25,21 +31,29 @@ window.Sonner = {
    * @param {boolean} options.closeButton - A boolean to control the visibility of the close button on the toasts.
    * @param {boolean} options.richColors - A boolean to control the use of rich colors for the toasts.
    * @param {string} options.position - A string to control the position of the toasts. The string is a combination of two values: the vertical position (top or bottom) and the horizontal position (left or right).
+   * @param {string} options.theme - The theme to use: "light", "dark", or "system" (default: "system").
+   * @param {number} options.duration - Global default toast duration in ms (overrides TOAST_LIFETIME).
    * @returns {void}
    * @example
-   * Sonner.init({ closeButton: true, richColors: true, position: "bottom-right" });
+   * Sonner.init({ closeButton: true, richColors: true, position: "bottom-right", theme: "dark", duration: 5000 });
    */
   init({
     closeButton = false,
     richColors = false,
     position = "bottom-right",
+    theme = "system",
+    duration = null,
   } = {}) {
+    _globalDuration = duration;
+    _resolvedTheme = resolveTheme(theme);
+
     if (reinitializeToaster()) {
+      const ol = document.getElementById("sonner-toaster-list");
+      ol.setAttribute("data-theme", _resolvedTheme);
       return;
     }
 
     renderToaster({ closeButton, richColors, position });
-    // loadSonnerStyles();
 
     const ol = document.getElementById("sonner-toaster-list");
     registerMouseOver(ol);
@@ -48,34 +62,38 @@ window.Sonner = {
   /**
    * Shows a new success toast with a specific message.
    * @param {string} msg - The message to display in the toast.
-   * @returns {void}
+   * @param {string|Object} descriptionOrOptions - A description string or an options object.
+   * @returns {string} The toast id.
    */
-  success(msg) {
-    Sonner.show(msg, { type: "success" });
+  success(msg, descriptionOrOptions) {
+    return Sonner.show(msg, normalizeShorthandArgs("success", descriptionOrOptions));
   },
   /**
    * Shows a new error toast with a specific message.
    * @param {string} msg - The message to display in the toast.
-   * @returns {void}
+   * @param {string|Object} descriptionOrOptions - A description string or an options object.
+   * @returns {string} The toast id.
    */
-  error(msg) {
-    Sonner.show(msg, { type: "error" });
+  error(msg, descriptionOrOptions) {
+    return Sonner.show(msg, normalizeShorthandArgs("error", descriptionOrOptions));
   },
   /**
    * Shows a new info toast with a specific message.
    * @param {string} msg - The message to display in the toast.
-   * @returns {void}
+   * @param {string|Object} descriptionOrOptions - A description string or an options object.
+   * @returns {string} The toast id.
    */
-  info(msg) {
-    Sonner.show(msg, { type: "info" });
+  info(msg, descriptionOrOptions) {
+    return Sonner.show(msg, normalizeShorthandArgs("info", descriptionOrOptions));
   },
   /**
    * Shows a new warning toast with a specific message.
    * @param {string} msg - The message to display in the toast.
-   * @returns {void}
+   * @param {string|Object} descriptionOrOptions - A description string or an options object.
+   * @returns {string} The toast id.
    */
-  warning(msg) {
-    Sonner.show(msg, { type: "warning" });
+  warning(msg, descriptionOrOptions) {
+    return Sonner.show(msg, normalizeShorthandArgs("warning", descriptionOrOptions));
   },
   /**
    * Shows a new toast with a specific message, description, and type.
@@ -83,11 +101,13 @@ window.Sonner = {
    * @param {Object} options - An object with the following properties:
    * @param {string} options.type - The type of the toast. The type can be one of the following values: "success", "error", "info", "warning", or "neutral".
    * @param {string} options.description - The description to display in the toast.
-   * @returns {void}
+   * @param {number} options.duration - Per-toast duration in ms (overrides global duration).
+   * @returns {string} The toast id.
    */
-  show(msg, { description, type } = {}) {
+  show(msg, { description, type, duration } = {}) {
     const list = document.getElementById("sonner-toaster-list");
     const { toast, id } = renderToast(list, msg, { description, type });
+    const toastDuration = duration ?? _globalDuration ?? TOAST_LIFETIME;
 
     // Wait for the toast to be mounted before registering swipe events
     window.setTimeout(function () {
@@ -101,8 +121,10 @@ window.Sonner = {
 
       registerSwipe(id);
       refreshProperties();
-      registerRemoveTimeout(el);
+      registerRemoveTimeout(el, toastDuration);
     }, 16);
+
+    return id;
   },
   /**
    * Removes an element with a specific id from the DOM after a delay.
@@ -127,6 +149,44 @@ window.Sonner = {
     el.setAttribute("data-unmount-tid", tid);
   },
 };
+
+////////////////////////
+// Helpers
+////////////////////////
+
+/**
+ * Resolves the theme to "light" or "dark".
+ * For "system", detects the user's preference and listens for changes.
+ * @param {string} theme - "light", "dark", or "system".
+ * @returns {string} "light" or "dark".
+ */
+function resolveTheme(theme) {
+  if (theme === "light" || theme === "dark") return theme;
+
+  // "system" — detect and listen
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  const apply = () => {
+    _resolvedTheme = mql.matches ? "dark" : "light";
+    const ol = document.getElementById("sonner-toaster-list");
+    if (ol) ol.setAttribute("data-theme", _resolvedTheme);
+  };
+  mql.addEventListener("change", apply);
+  return mql.matches ? "dark" : "light";
+}
+
+/**
+ * Normalizes the second argument of shorthand methods into an options object.
+ * Supports both (msg, "description") and (msg, { description, ... }) signatures.
+ * @param {string} type - The toast type.
+ * @param {string|Object} descriptionOrOptions - A description string or options object.
+ * @returns {Object} Normalized options with type set.
+ */
+function normalizeShorthandArgs(type, descriptionOrOptions) {
+  if (typeof descriptionOrOptions === "string") {
+    return { type, description: descriptionOrOptions };
+  }
+  return { ...descriptionOrOptions, type };
+}
 
 ////////////////////////
 // Assets
@@ -325,12 +385,14 @@ function renderToast(list, msg, { type, description }) {
  * The function sets a new timeout to remove the element from its parent after a delay.
  * The timeout ensures that all CSS transitions complete before the element is removed.
  * @param {Element} el - The element to register the remove timeout for.
+ * @param {number} duration - The duration in ms before the toast is removed.
  * @returns {void}
  */
-function registerRemoveTimeout(el) {
+function registerRemoveTimeout(el, duration) {
+  const ms = duration ?? _globalDuration ?? TOAST_LIFETIME;
   const tid = window.setTimeout(function () {
     Sonner.remove(el.getAttribute("data-id"));
-  }, TOAST_LIFETIME);
+  }, ms);
   el.setAttribute("data-remove-tid", tid);
 }
 
@@ -369,7 +431,7 @@ function renderToaster({ closeButton, richColors, position }) {
     dir="ltr"
     tabindex="-1"
     data-sonner-toaster="true"
-    data-theme="light"
+    data-theme="${_resolvedTheme}"
     data-close-button="${closeButton}"
     data-rich-colors="${richColors}"
     data-y-position="${position[0]}"
