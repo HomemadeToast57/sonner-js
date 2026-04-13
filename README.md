@@ -166,7 +166,9 @@ Removes an element with a specific id from the DOM after a delay.
 
 ## Thanks
 
-I would like to thank [Emil Kowalski](https://emilkowal.ski/) for creating the original Sonner component and for the inspiration to create this version.
+This is a fork of [sonner-js](https://github.com/ofps/sonner-js) by [Fernando Pina dos Santos](https://github.com/ofps) — thank you for the excellent vanilla JS port!
+
+I would also like to thank [Emil Kowalski](https://emilkowal.ski/) for creating the original Sonner component and for the inspiration behind this project.
 
 ## License
 
